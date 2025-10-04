@@ -13,8 +13,9 @@ displayed on the app.
 
 **Fetch Photos by Date**: Users can input any date and their API key to retrieve the APOD for that specific day.
 
-**Favorite Photos**: Users can save their favorite photos, which are stored in a local favorites.txt file, allowing offline access.
+**Favorite Photos**: Users can ⭐ their favorite photos, which are stored in a local favorites.txt file, allowing offline access.
 
+**Save**: Users can save photos
 **Navigation**: The app includes "Next" and "Previous" buttons to browse through different photos easily the right arrow and left arrow buttons 
 also performs this function.
 

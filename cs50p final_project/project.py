@@ -15,7 +15,7 @@ CANVAS_WIDTH = 600
 index = -1
 IMAGE_TO_DISPLAY = None
 image_path = ''
-FAV_FILE = 'favorites.txt'
+FAV_FILE = 'starred.txt'
 apod_pack = []
 CURRENT_INDEX = 0
 NASA_URL_ENDPOINT = 'https://api.nasa.gov/planetary/apod'
@@ -31,13 +31,13 @@ def show_instructions(event=None):
         "Instructions:\n"
         "- Enter a valid API key(You can get this from https://api.nasa.gov/) and a date in YYYY-MM-DD format.\n"
         "- Press 'Get Photo' to retrieve the image for the specified date.\n"
-        "- Use the '❤ Add to faves ⭐' button to save the image to your favorites.\n"
-        "- View your favorites by pressing 'See Faves' or pressing Ctrl + D.\n"
+        "- Use the '❤ Star ⭐' button to save the image to your starred.\n"
+        "- View your starred by pressing 'See starred' or pressing Ctrl + D.\n"
         "- Get previous and Next images with the ⬅️ and ➡️ buttons or Left/Right arrows.\n\n"
         "ShortCuts:\n"
         "- Enter: To Get Photo\n"
-        "- Ctrl + F: Add an APOD to Favorites\n"
-        "- Ctrl + D: View Favorites\n"
+        "- Ctrl + F: Add an APOD to starred\n"
+        "- Ctrl + D: View starred\n"
         "-Ctrl + i:  View instructions😉"
     )
 
@@ -90,7 +90,6 @@ def get_apod(event=None):
         date_entry.delete(0, END)
 
     except requests.exceptions.HTTPError as e:
-        print(e)
         if response.status_code == 403:
             messagebox.showerror(
                 title='API Key Error',
@@ -100,7 +99,6 @@ def get_apod(event=None):
         elif response.status_code != 200:
             # except the error dictionary doesn't have a 'msg' key
             error_msg = response.json().get('msg', 'An error occurred')
-            # print(e)
             messagebox.showerror(title=f'{response.status_code} Client error', message=error_msg)
             return None
 
@@ -147,16 +145,19 @@ def display_photo_on_canvas(event=None):
         image = Image.open(image_path)
         image = image.resize((600, 600), Image.Resampling.LANCZOS)
         IMAGE_TO_DISPLAY = ImageTk.PhotoImage(image)
-        canvas.itemconfig(canvas_bg, image=IMAGE_TO_DISPLAY)
-        canvas.itemconfig(title_text, text=title)
-        canvas.itemconfig(explanation_text, text=explanation)
-        canvas.itemconfig(intro_text, text='')
+        update_canvas(canvas, IMAGE_TO_DISPLAY, explanation, title)
         update_buttons()
+
+def update_canvas(canvas, image, explanation, title):
+    canvas.itemconfig(canvas_bg, image=image)
+    canvas.itemconfig(title_text, text=title)
+    canvas.itemconfig(explanation_text, text=explanation)
+    canvas.itemconfig(intro_text, text='')
 
 
 def update_buttons():
     get_previous.config(state=NORMAL if CURRENT_INDEX > 0 else DISABLED)
-    add_to_faves.config(state=NORMAL)
+    add_to_starred.config(state=NORMAL)
     get_next.config(state=NORMAL if CURRENT_INDEX < len(apod_pack) - 1 else DISABLED)
 
 
@@ -176,54 +177,51 @@ def show_next_image(event=None):
         display_photo_on_canvas()
 
 
-def add_faves_to_file(event=None):
+def add_starred_to_file(event=None):
     global image_path
     with open(FAV_FILE, mode='a+') as file:
         file.seek(0)
-        existing_faves = file.read().strip()
-        if image_path not in existing_faves:
+        existing_starred = file.read().strip()
+        if image_path not in existing_starred:
             file.write(f"{image_path}\n")
-            messagebox.showinfo(message='Added to favorites.')
+            messagebox.showinfo(message='Added to starred.')
         else:
-            messagebox.showinfo(message='Already in Favorites.')
+            messagebox.showinfo(message='Already in Starred.')
 
 
-def show_favorites(event=None):
+def show_starred(event=None):
     global image_path, index
     with open(FAV_FILE) as file:
-        list_of_faves = [line.strip() for line in file if line.strip()]
+        list_of_starred = [line.strip() for line in file if line.strip()]
         try:
-            index = (index + 1) % len(list_of_faves)  # using % so it doesn't go over the number of items in the list
+            index = (index + 1) % len(list_of_starred)  # using % so it doesn't go over the number of items in the list
         except ZeroDivisionError:
-            messagebox.showerror(title='Empty Favorites', message='No image in favorites')
+            messagebox.showerror(title='Empty starred', message='No image in starred')
         else:
-            image_path = list_of_faves[index].strip()  # get the image_path that corresponds to the index
+            image_path = list_of_starred[index].strip()  # get the image_path that corresponds to the index
             image = Image.open(image_path)  # open the image
             image = image.resize((CANVAS_WIDTH, CANVAS_HEIGHT))  # resize the image accordingly
-            photo = ImageTk.PhotoImage(image)
+            starred_photo = ImageTk.PhotoImage(image)
             date = re.sub(r'[a-z_.\\]', '', image_path, )
-            canvas.itemconfig(title_text, text=f'Favorite {date}')
-            canvas.itemconfig(explanation_text, text='')
-            canvas.itemconfig(canvas_bg, image=photo)
-            canvas.image = photo  # save image so it doesn't get garbage collected
+            update_canvas(canvas, starred_photo, '', f'starred {date}')
+            canvas.image = starred_photo  # save image so it doesn't get garbage collected
 
 
 def save_apod():
     try:
-        pil_img = Image.open(apod_pack[CURRENT_INDEX][0]).convert('RGBA')
+        pil_img = Image.open(image_path).convert('RGBA')
         save_path = filedialog.asksaveasfilename(
             title='Save Image: ', defaultextension='.png',
             filetypes=[("PNG files", "*.png"), ("JPEG files", "*.jpg")]
         )
         if save_path:
             try:
-                print(apod_pack[CURRENT_INDEX])
                 pil_img.save(save_path)
                 messagebox.showinfo('Image saved', f'Image saved successfully to {save_path}')
             except Exception as e:
                 messagebox.showerror('Error', f'Error saving Image: {e}')
-    except IndexError:
-        messagebox.showerror('Error', 'Fetch a photo before saving.')
+    except FileNotFoundError:
+        messagebox.showerror('Error', 'Please fetch a photo or choose one from your starred list before saving.')
 
 
 def get_photo(event=None):
@@ -269,18 +267,17 @@ get_next.config(state=DISABLED)
 get_next.place(x=480, y=667, width=60)
 root.bind('<Right>', show_next_image)
 
-add_to_faves = Button(
-    text='❤Add to faves⭐', bg=BUTTON_COLOR,
-    command=add_faves_to_file
+add_to_starred = Button(
+    text='❤Star⭐', bg=BUTTON_COLOR,
+    command=add_starred_to_file
 )
-add_to_faves.config(state=DISABLED)
-add_to_faves.place(x=80, y=667)
-root.bind('<Control-f>', add_faves_to_file)
+add_to_starred.config(state=DISABLED)
+add_to_starred.place(x=80, y=667)
+root.bind('<Control-f>', add_starred_to_file)
 
-show_favorite_button = Button(text='See Faves', bg=BUTTON_COLOR, command=show_favorites)
-show_favorite_button.place(x=3, y=667)
-# show_favorite_button.place_forget() if file_is_empty(FAV_FILE) else show_favorite_button.place(x=3, y=667)
-root.bind('<Control-d>', show_favorites)
+show_starred_button = Button(text='See starred', bg=BUTTON_COLOR, command=show_starred)
+show_starred_button.place(x=3, y=667)
+root.bind('<Control-d>', show_starred)
 
 instructions_button = Button(text='Instructions', bg=BUTTON_COLOR, command=show_instructions)
 instructions_button.place(x=30, y=700)
