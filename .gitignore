@@ -1,3 +1,4 @@
 venv/
 .env
 .idea/
+cs50p final_project/__pycache__/

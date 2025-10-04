@@ -1,2 +1,0 @@
-apod_images\apo_2012-06-20.png
-apod_images\apo_2002-12-22.png
