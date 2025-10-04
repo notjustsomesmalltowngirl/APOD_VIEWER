@@ -5,9 +5,8 @@ from datetime import datetime
 from tkinter import *
 from PIL import Image, ImageTk
 from io import BytesIO
-from tkinter import messagebox
-
-api_key = 'Wv8R3GGi9OViHJ2LeJBughf5xhtwOePgGH1Gnem0'
+from tkinter import messagebox, filedialog
+# from do
 BACKGROUND_COLOR = "#4A628A"
 CANVAS_COLOR = "#CBDCEB"
 BUTTON_COLOR = '#9B7EBD'
@@ -17,7 +16,7 @@ index = -1
 IMAGE_TO_DISPLAY = None
 image_path = ''
 FAV_FILE = 'favorites.txt'
-apod_images = []
+apod_pack = []
 CURRENT_INDEX = 0
 NASA_URL_ENDPOINT = 'https://api.nasa.gov/planetary/apod'
 
@@ -88,19 +87,23 @@ def get_apod(event=None):
                                 )
         response.raise_for_status()
         apod_data = response.json()
+        date_entry.delete(0, END)
 
     except requests.exceptions.HTTPError as e:
-        if response.status_code == 400:
-            # except the error dictionary doesn't have a 'msg' key
-            error_msg = response.json().get('msg', 'An error occurred')
-            messagebox.showerror(title=f'{response.status_code} Client error', message=error_msg)
-            return None
-        elif re.search(r'^40[1-5]$', str(response.status_code)):
+        print(e)
+        if response.status_code == 403:
             messagebox.showerror(
                 title='API Key Error',
                 message='Invalid or missing API key. Please check your API key.'
             )
             return None
+        elif response.status_code != 200:
+            # except the error dictionary doesn't have a 'msg' key
+            error_msg = response.json().get('msg', 'An error occurred')
+            # print(e)
+            messagebox.showerror(title=f'{response.status_code} Client error', message=error_msg)
+            return None
+
         messagebox.showerror(
             title='HTTPError',
             message=f'An HTTPError occurred\n{e}'
@@ -125,10 +128,10 @@ def get_apod(event=None):
         file_path = os.path.join(folder_path, filename)
         image.save(file_path)
         # add all the images to a list
-        apod_images.append((file_path, apod_data['title'], apod_data['explanation']))
-        CURRENT_INDEX = len(apod_images) - 1  # so it never goes out of range
+        apod_pack.append((file_path, apod_data['title'], apod_data['explanation']))
+        CURRENT_INDEX = len(apod_pack) - 1  # so it never goes out of range
 
-        return apod_images[CURRENT_INDEX]
+        return apod_pack[CURRENT_INDEX]
 
     messagebox.showinfo(title="No Image",
                         message="No image available for the selected date."
@@ -138,8 +141,8 @@ def get_apod(event=None):
 
 def display_photo_on_canvas(event=None):
     global IMAGE_TO_DISPLAY, image_path
-    if apod_images:
-        image_path, title, explanation = apod_images[CURRENT_INDEX]
+    if apod_pack:
+        image_path, title, explanation = apod_pack[CURRENT_INDEX]
 
         image = Image.open(image_path)
         image = image.resize((600, 600), Image.Resampling.LANCZOS)
@@ -147,14 +150,14 @@ def display_photo_on_canvas(event=None):
         canvas.itemconfig(canvas_bg, image=IMAGE_TO_DISPLAY)
         canvas.itemconfig(title_text, text=title)
         canvas.itemconfig(explanation_text, text=explanation)
+        canvas.itemconfig(intro_text, text='')
         update_buttons()
-        date_entry.delete(0, END)
 
 
 def update_buttons():
     get_previous.config(state=NORMAL if CURRENT_INDEX > 0 else DISABLED)
     add_to_faves.config(state=NORMAL)
-    get_next.config(state=NORMAL if CURRENT_INDEX < len(apod_images) - 1 else DISABLED)
+    get_next.config(state=NORMAL if CURRENT_INDEX < len(apod_pack) - 1 else DISABLED)
 
 
 def show_previous_image(event=None):
@@ -168,7 +171,7 @@ def show_previous_image(event=None):
 def show_next_image(event=None):
     global CURRENT_INDEX
     # check if the user has clicked the previous button
-    if CURRENT_INDEX < len(apod_images) - 1:
+    if CURRENT_INDEX < len(apod_pack) - 1:
         CURRENT_INDEX += 1  # if True, increase the index by one till we reach 'current picture'
         display_photo_on_canvas()
 
@@ -205,11 +208,22 @@ def show_favorites(event=None):
             canvas.image = photo  # save image so it doesn't get garbage collected
 
 
-#
-#
-# def file_is_empty(file_name):
-#     with open(file_name, mode='r') as file:
-#         return file.read().strip() == ''
+def save_apod():
+    try:
+        pil_img = Image.open(apod_pack[CURRENT_INDEX][0]).convert('RGBA')
+        save_path = filedialog.asksaveasfilename(
+            title='Save Image: ', defaultextension='.png',
+            filetypes=[("PNG files", "*.png"), ("JPEG files", "*.jpg")]
+        )
+        if save_path:
+            try:
+                print(apod_pack[CURRENT_INDEX])
+                pil_img.save(save_path)
+                messagebox.showinfo('Image saved', f'Image saved successfully to {save_path}')
+            except Exception as e:
+                messagebox.showerror('Error', f'Error saving Image: {e}')
+    except IndexError:
+        messagebox.showerror('Error', 'Fetch a photo before saving.')
 
 
 def get_photo(event=None):
@@ -223,8 +237,8 @@ root.geometry('600x730')
 root.resizable(width=False, height=False)
 root.title("Astronomy picture of the day")
 show_instructions()
-bg_image = Image.open('label_bg_imagee.jpg')
-bg_image = bg_image.resize((700, 800))
+bg_image = Image.open('../images/label_bg_imagee.jpg')
+bg_image = bg_image.resize((700, 800), Image.Resampling.LANCZOS)
 bg_photo = ImageTk.PhotoImage(bg_image)
 background_label = Label(root, image=bg_photo)
 background_label.place(x=0, y=0, relwidth=1, relheight=1)
@@ -268,13 +282,31 @@ show_favorite_button.place(x=3, y=667)
 # show_favorite_button.place_forget() if file_is_empty(FAV_FILE) else show_favorite_button.place(x=3, y=667)
 root.bind('<Control-d>', show_favorites)
 
-show_instructions_button = Button(text='Instructions', bg=BUTTON_COLOR, command=show_instructions)
-show_instructions_button.place(x=30, y=700)
+instructions_button = Button(text='Instructions', bg=BUTTON_COLOR, command=show_instructions)
+instructions_button.place(x=30, y=700)
 root.bind('<Control-i>', show_instructions)
-canvas = Canvas(width=CANVAS_WIDTH, height=CANVAS_HEIGHT, bg=CANVAS_COLOR, highlightthickness=0)
-a_bg_img = ImageTk.PhotoImage(file='canvas_bg_image.jpg')
-canvas_bg = canvas.create_image(300, 300, image=a_bg_img)
 
+save_button = Button(text='Save', bg=BUTTON_COLOR, command=save_apod)
+save_button.place(x=150, y=700)
+
+
+canvas = Canvas(width=CANVAS_WIDTH, height=CANVAS_HEIGHT, bg=CANVAS_COLOR, highlightthickness=0)
+
+original_bg_image = Image.open('../images/canvas_bg_image.jpg')
+resized_bg_image = original_bg_image.resize((CANVAS_WIDTH, CANVAS_HEIGHT), Image.Resampling.LANCZOS)
+
+tk_image = ImageTk.PhotoImage(resized_bg_image)
+canvas_bg = canvas.create_image(300, 300, image=tk_image)
+intro_text = canvas.create_text(
+                10, 100, text='Fetch stunning Astronomy\n'
+                              'Photos of the Day\n'
+                              'from NASA’s API\n'
+                              'and save them — you\n'
+                              'might just discover\n'
+                              'your next wallpaper! 😉',
+                fill='white', font=("Helvetica", 20, "italic"),
+                anchor="w"
+            )
 title_text = canvas.create_text(300, 20, text='', font=('Arial', 14, 'bold'), fill='white')
 explanation_text = canvas.create_text(300, 440, text='', font=('poppins', 12, 'italic'), fill='white',
                                       width=580)

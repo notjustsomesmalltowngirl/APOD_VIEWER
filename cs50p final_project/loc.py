@@ -10,7 +10,7 @@ def count_lines(file_path):
         return f"You've written {len(lines_of_code)} lines of code"
 
 # import requests
-# print(count_lines('project.py'))
+print(count_lines('project.py'))
 # parameters = {
 #     'date': '2024-12-01',
 #     'api_key': 'Wv8R3GGi9OViHJ2LeJBughf5xhtwOePgGH1Gnem0',
@@ -20,5 +20,3 @@ def count_lines(file_path):
 #                         params=parameters
 #                         )
 # print(response.json())
-print(len(f'    {int(5.75e+01)}'
-))

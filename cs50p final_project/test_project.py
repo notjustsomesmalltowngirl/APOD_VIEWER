@@ -9,7 +9,7 @@ import project
 
 class TestApod(unittest.TestCase):
     def setUp(self):
-        project.apod_images = []  # Reset list
+        project.apod_pack = []  # Reset list
         project.CURRENT_INDEX = 0
 
     @patch('requests.get')
@@ -45,7 +45,7 @@ class TestApod(unittest.TestCase):
 
         # Assert the result
         self.assertIsNotNone(result)
-        self.assertEqual(len(project.apod_images), 1)
+        self.assertEqual(len(project.apod_pack), 1)
         self.assertIn('Title', result[1])
         self.assertIn('Explanation', result[2])
 
@@ -89,20 +89,20 @@ class TestApod(unittest.TestCase):
 
     @patch('project.display_photo_on_canvas')
     def test_show_next_image(self, mock_display_photo):
-        project.apod_images = [('image', 'text', 'explanation'), ('image2', 'text2', 'explanation2')]
+        project.apod_pack = [('image', 'text', 'explanation'), ('image2', 'text2', 'explanation2')]
         project.show_next_image()
         self.assertEqual(project.CURRENT_INDEX, 1)
         mock_display_photo.assert_called_once()
 
     def test_with_no_next_img(self):
-        project.CURRENT_INDEX = len(project.apod_images) - 1
+        project.CURRENT_INDEX = len(project.apod_pack) - 1
         project.show_next_image()
-        self.assertEqual(project.CURRENT_INDEX, len(project.apod_images) - 1)
+        self.assertEqual(project.CURRENT_INDEX, len(project.apod_pack) - 1)
 
     @patch('project.display_photo_on_canvas')
     def test_show_previous_image(self, mock_display_photo):
         project.CURRENT_INDEX = 1
-        project.apod_images = [('image', 'text', 'explanation'), ('image2', 'text2', 'explanation2')]
+        project.apod_pack = [('image', 'text', 'explanation'), ('image2', 'text2', 'explanation2')]
         project.show_previous_image()
         self.assertEqual(project.CURRENT_INDEX, 0)
         mock_display_photo.assert_called_once()
